@@ -1,0 +1,15 @@
+import { Router } from "express";
+import ServiceType from "../models/ServiceType.js";
+import TaskTemplate from "../models/TaskTemplate.js";
+import { protect, allow } from "../middleware/auth.js";
+import { audit } from "../services/auditService.js";
+const router=Router(); router.use(protect);
+router.get("/", async(req,res)=>res.json(await ServiceType.find()));
+router.post("/", allow("admin"), async(req,res)=>{const x=await ServiceType.create(req.body); await audit(req.user._id,"create","ServiceType",x._id); res.status(201).json(x);});
+router.patch("/:id", allow("admin"), async(req,res)=>{const x=await ServiceType.findByIdAndUpdate(req.params.id,req.body,{new:true,runValidators:true}); if(!x)return res.status(404).json({message:"Service not found"}); await audit(req.user._id,"update","ServiceType",x._id,req.body); res.json(x);});
+router.delete("/:id", allow("admin"), async(req,res)=>{const x=await ServiceType.findByIdAndDelete(req.params.id); if(!x)return res.status(404).json({message:"Service not found"}); await audit(req.user._id,"delete","ServiceType",x._id); res.json({message:"Service deleted"});});
+router.post("/:id/templates", allow("admin"), async(req,res)=>{const x=await TaskTemplate.create({...req.body,serviceTypeId:req.params.id}); await audit(req.user._id,"create","TaskTemplate",x._id); res.status(201).json(x);});
+router.get("/:id/templates", async(req,res)=>res.json(await TaskTemplate.find({serviceTypeId:req.params.id}).sort({order:1})));
+router.patch("/:id/templates/:templateId", allow("admin"), async(req,res)=>{const x=await TaskTemplate.findOneAndUpdate({_id:req.params.templateId,serviceTypeId:req.params.id},req.body,{new:true,runValidators:true}); if(!x)return res.status(404).json({message:"Template not found"}); await audit(req.user._id,"update","TaskTemplate",x._id,req.body); res.json(x);});
+router.delete("/:id/templates/:templateId", allow("admin"), async(req,res)=>{const deleted=await TaskTemplate.findOneAndDelete({_id:req.params.templateId,serviceTypeId:req.params.id}); if(!deleted)return res.status(404).json({message:"Template not found"}); await audit(req.user._id,"delete","TaskTemplate",deleted._id); res.json({message:"Template deleted"});});
+export default router;

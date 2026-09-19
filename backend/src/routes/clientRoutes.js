@@ -1,0 +1,10 @@
+import { Router } from "express";
+import Client from "../models/Client.js";
+import { protect, allow } from "../middleware/auth.js";
+import { audit } from "../services/auditService.js";
+const router=Router(); router.use(protect);
+router.get("/", async(req,res)=>res.json(await Client.find().sort({createdAt:-1})));
+router.post("/", allow("admin"), async(req,res)=>{const x=await Client.create(req.body); await audit(req.user._id,"create","Client",x._id); res.status(201).json(x);});
+router.patch("/:id", allow("admin"), async(req,res)=>{const x=await Client.findByIdAndUpdate(req.params.id,req.body,{new:true,runValidators:true}); if(!x)return res.status(404).json({message:"Client not found"}); await audit(req.user._id,"update","Client",x._id,req.body); res.json(x);});
+router.delete("/:id", allow("admin"), async(req,res)=>{const x=await Client.findByIdAndDelete(req.params.id); if(!x)return res.status(404).json({message:"Client not found"}); await audit(req.user._id,"delete","Client",x._id); res.json({message:"Client deleted"});});
+export default router;
